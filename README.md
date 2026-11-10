@@ -27,3 +27,7 @@ npm test
 
 ## デプロイ
 `main` に push すると GitHub Actions（`.github/workflows/deploy.yml`）が型チェック・テスト・ビルドを行い、成功したときだけ GitHub Pages に公開します。
+
+- 初回のみ: リポジトリの Settings → Pages → Build and deployment の Source を「GitHub Actions」にしておく（未設定だとワークフローが失敗します）
+- Node のバージョンは `.nvmrc` で指定しています（CI も同じファイルを参照）
+- `npm run preview` で確認するときは http://localhost:4173/Turing-machine-app/ を開いてください

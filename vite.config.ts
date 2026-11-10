@@ -1,9 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-export default defineConfig({
-  // Relative asset paths so the build works under any sub-path,
-  // e.g. GitHub Pages at https://<user>.github.io/Turing-machine-app/.
-  base: "./",
+// GitHub Pages serves this repo at https://<user>.github.io/Turing-machine-app/.
+// The dev server stays at "/" for convenience.
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "/Turing-machine-app/" : "/",
   plugins: [react()],
-});
+}));
