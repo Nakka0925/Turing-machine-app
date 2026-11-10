@@ -2,6 +2,8 @@
 
 チューリングマシンの動きを1ステップずつ観察できるシミュレータです。進数変換のプログラムをプリセットとして収録しています。
 
+**公開URL**: https://nakka0925.github.io/Turing-machine-app/
+
 ## プリセット
 - 10進 → 2進 / 2進 → 10進
 - 2進 → 1進 / 1進 → 2進
@@ -22,3 +24,6 @@ npm install
 npm run dev     # http://localhost:5173
 npm test
 ```
+
+## デプロイ
+`main` に push すると GitHub Actions（`.github/workflows/deploy.yml`）が型チェック・テスト・ビルドを行い、成功したときだけ GitHub Pages に公開します。
