@@ -22,7 +22,8 @@ const binaryIncrement: Preset = {
   sampleInput: "1011",
   inputPattern: /^[01]+$/,
   inputHint: "0 と 1 のみ",
-  expected: (x) => (BigInt("0b" + x) + 1n).toString(2),
+  // The machine keeps the input's width (e.g. 0011 → 0100), so pad to match.
+  expected: (x) => (BigInt("0b" + x) + 1n).toString(2).padStart(x.length, "0"),
   source: lines(
     "// 2進数 +1",
     "start: right",

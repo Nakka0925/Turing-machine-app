@@ -1,4 +1,4 @@
-import { read, type MachineState, type Program } from "../machine/machine";
+import { lookup, read, type MachineState, type Program } from "../machine/machine";
 
 /** Keep the row visible by scrolling only its scroll container (never the page). */
 function scrollWithinContainer(row: HTMLTableRowElement | null) {
@@ -14,8 +14,7 @@ function scrollWithinContainer(row: HTMLTableRowElement | null) {
 }
 
 export function TransitionTable({ program, machine }: { program: Program; machine: MachineState | null }) {
-  const nextKey = machine && machine.status === "running" ? `${machine.state}\u0000${read(machine)}` : null;
-  const next = nextKey ? program.table.get(nextKey) : undefined;
+  const next = machine && machine.status === "running" ? lookup(program, machine.state, read(machine)) : undefined;
 
   return (
     <div className="table-scroll">

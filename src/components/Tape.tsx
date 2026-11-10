@@ -1,4 +1,4 @@
-import { read, type MachineState } from "../machine/machine";
+import { BLANK, read, type MachineState } from "../machine/machine";
 
 const RADIUS = 9;
 
@@ -8,8 +8,8 @@ export function Tape({ machine }: { machine: MachineState }) {
     const symbol = read(machine, pos);
     const isHead = pos === machine.head;
     cells.push(
-      <div key={pos} className={`cell${isHead ? " head" : ""}${symbol === "_" ? " blank" : ""}`}>
-        <span className="symbol">{symbol === "_" ? "" : symbol}</span>
+      <div key={pos} className={`cell${isHead ? " head" : ""}${symbol === BLANK ? " blank" : ""}`}>
+        <span className="symbol">{symbol === BLANK ? "" : symbol}</span>
         <span className="pos">{pos}</span>
       </div>,
     );

@@ -12,10 +12,13 @@ export default function App() {
   const preset = PRESETS.find((p) => p.id === presetId);
   const [source, setSource] = useState(PRESETS[0].source);
   const [input, setInput] = useState(PRESETS[0].sampleInput);
-  const [speed, setSpeed] = useState(10);
+  // Slider position on a log scale (0 → 1 step/s, 3 → 1000 steps/s). Kept unrounded so
+  // small slider moves are never snapped back by rounding the derived speed.
+  const [speedPos, setSpeedPos] = useState(1);
+  const speed = Math.round(10 ** speedPos);
 
   const { program, errors } = useMemo(() => parseProgram(source), [source]);
-  const { machine, playing, done, reset, stepOnce, toggle, runToEnd } = useMachine(program, input, speed);
+  const { machine, running, turbo, done, reset, stepOnce, toggle, runToEnd } = useMachine(program, input, speed);
 
   const choosePreset = (id: string) => {
     setPresetId(id);
@@ -32,7 +35,8 @@ export default function App() {
   };
 
   const inputError = preset && input && !preset.inputPattern.test(input) ? `入力は ${preset.inputHint} にしてください` : null;
-  const output = machine ? tapeContent(machine) : "";
+  const halted = machine?.status === "halted";
+  const output = useMemo(() => (machine && halted ? tapeContent(machine) : ""), [machine, halted]);
   const expected = useMemo(() => {
     if (!preset || inputError || !input) return null;
     try {
@@ -81,18 +85,18 @@ export default function App() {
 
         <div className="buttons">
           <button onClick={reset}>⟲ リセット</button>
-          <button onClick={stepOnce} disabled={done || playing}>
+          <button onClick={stepOnce} disabled={done || running}>
             1ステップ
           </button>
           <button className="primary" onClick={toggle} disabled={done}>
-            {playing ? "❚❚ 一時停止" : "▶ 実行"}
+            {running ? "❚❚ 一時停止" : "▶ 実行"}
           </button>
-          <button onClick={runToEnd} disabled={done}>
-            ⏭ 最後まで
+          <button onClick={runToEnd} disabled={done || turbo}>
+            {turbo ? "⏭ 実行中…" : "⏭ 最後まで"}
           </button>
           <label className="speed">
             速度
-            <input type="range" min={0} max={3} step={0.1} value={Math.log10(speed)} onChange={(e) => setSpeed(Math.round(10 ** Number(e.target.value)))} />
+            <input type="range" min={0} max={3} step={0.1} value={speedPos} onChange={(e) => setSpeedPos(Number(e.target.value))} aria-label="速度" />
             <span>{speed} 歩/秒</span>
           </label>
         </div>
@@ -111,7 +115,7 @@ export default function App() {
               <dt>ステータス</dt>
               <dd className={`status ${machine.status}`}>
                 {machine.status === "halted"
-                  ? "停止（受理）"
+                  ? `停止（停止状態 ${machine.state} に到達）`
                   : machine.status === "stuck"
                     ? "停止（該当する遷移なし）"
                     : machine.steps >= MAX_STEPS
@@ -122,7 +126,7 @@ export default function App() {
           </dl>
         )}
 
-        {machine?.status === "halted" && (
+        {halted && (
           <div className="result">
             <div>
               <span className="label">出力</span>

@@ -71,9 +71,9 @@ export function parseProgram(source: string): { program: Program | null; errors:
       return;
     }
 
-    const m = text.match(/^(.+?)\s*,\s*(\S)\s*->\s*(\S)\s*,\s*([LRS])\s*,\s*(.+)$/i);
+    const m = text.match(/^([^\s,]+)\s*,\s*(\S)\s*->\s*(\S)\s*,\s*([LRS])\s*,\s*([^\s,]+)$/i);
     if (!m) {
-      errors.push({ line: lineNo, message: "書式: 状態, 読む記号 -> 書く記号, L|R|S, 次の状態" });
+      errors.push({ line: lineNo, message: "書式: 状態, 読む記号 -> 書く記号, L|R|S, 次の状態（状態名に空白やカンマは使えません）" });
       return;
     }
     const t: Transition = {
@@ -119,43 +119,65 @@ export function createMachine(program: Program, input: string): MachineState {
   };
 }
 
+/** The transition that applies to (state, symbol), if any. */
+export function lookup(program: Program, state: string, symbol: string): Transition | undefined {
+  return program.table.get(key(state, symbol));
+}
+
 export function read(m: MachineState, pos: number = m.head): string {
   return m.tape.get(pos) ?? BLANK;
 }
 
-/** Returns a new state (the input is not mutated). */
-export function step(program: Program, m: MachineState): MachineState {
-  if (m.status !== "running") return m;
-  const t = program.table.get(key(m.state, read(m)));
-  if (!t) return { ...m, status: "stuck", lastTransition: null };
-
+/**
+ * Runs up to `n` steps and returns a new state (the input is not mutated).
+ * The tape is copied once per call, so cost is O(tape + n), not O(tape × n).
+ */
+export function advance(program: Program, m: MachineState, n: number): MachineState {
+  if (m.status !== "running" || n <= 0) return m;
   const tape = new Map(m.tape);
-  if (t.write === BLANK) tape.delete(m.head);
-  else tape.set(m.head, t.write);
-  const head = m.head + (t.move === "L" ? -1 : t.move === "R" ? 1 : 0);
+  let { head, state, steps } = m;
+  let status: MachineStatus = "running";
+  let lastTransition = m.lastTransition;
 
-  return {
-    tape,
-    head,
-    state: t.next,
-    steps: m.steps + 1,
-    status: program.halt.has(t.next) ? "halted" : "running",
-    lastTransition: t,
-  };
+  for (let i = 0; i < n; i++) {
+    const t = program.table.get(key(state, tape.get(head) ?? BLANK));
+    if (!t) {
+      status = "stuck";
+      lastTransition = null;
+      break;
+    }
+    if (t.write === BLANK) tape.delete(head);
+    else tape.set(head, t.write);
+    head += t.move === "L" ? -1 : t.move === "R" ? 1 : 0;
+    state = t.next;
+    steps++;
+    lastTransition = t;
+    if (program.halt.has(state)) {
+      status = "halted";
+      break;
+    }
+  }
+  return { tape, head, state, steps, status, lastTransition };
+}
+
+export function step(program: Program, m: MachineState): MachineState {
+  return advance(program, m, 1);
 }
 
 export function run(program: Program, input: string, maxSteps = 1_000_000): MachineState {
-  let m = createMachine(program, input);
-  while (m.status === "running" && m.steps < maxSteps) m = step(program, m);
-  return m;
+  const m = createMachine(program, input);
+  return advance(program, m, maxSteps - m.steps);
 }
 
 /** Non-blank tape content from leftmost to rightmost written cell. */
 export function tapeContent(m: MachineState): string {
   if (m.tape.size === 0) return "";
-  const positions = [...m.tape.keys()];
-  const lo = Math.min(...positions);
-  const hi = Math.max(...positions);
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const pos of m.tape.keys()) {
+    if (pos < lo) lo = pos;
+    if (pos > hi) hi = pos;
+  }
   let s = "";
   for (let i = lo; i <= hi; i++) s += read(m, i);
   return s;
